@@ -1,50 +1,89 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canal Crater AR</title>
-
-    <!-- A-Frame: the 3D scene framework -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-
-    <!-- AR.js: adds GPS location-based AR to A-Frame -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-
     <style>
       body { margin: 0; overflow: hidden; }
+      #debug {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 9999;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 10px;
+        font-size: 14px;
+        border-radius: 8px;
+        max-width: 90vw;
+      }
     </style>
   </head>
-
   <body>
+
+    <div id="debug">Starting...</div>
+
     <a-scene
       vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true; precision: medium;"
       arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
     >
-
-      <!-- Preload your GLB asset -->
       <a-assets>
         <a-asset-item id="crater-model" src="./assets/crater10.glb"></a-asset-item>
       </a-assets>
 
-      <!-- Your crater, placed at GPS coordinates -->
       <a-entity
+        id="crater"
         gltf-model="#crater-model"
-        gps-new-entity-place="latitude: 52.4875122560963; longitude: 13.422214087234323
+        gps-new-entity-place="latitude:52.4875122560963; longitude: 13.422214087234323"
         position="0 -10 0"
-        rotation="0 45 0"
+        rotation="0 0 0"
         scale="1 1 1"
       ></a-entity>
 
-      <!-- GPS camera with smoothing to reduce jitter -->
       <a-camera
         id="camera1"
         look-controls-enabled="false"
         arjs-look-controls="smoothingFactor: 0.1"
         gps-new-camera="gpsMinDistance: 5"
       ></a-camera>
-
     </a-scene>
+
+    <script>
+      const debug = document.getElementById('debug');
+
+      // Step 1 — check if camera starts
+      document.querySelector('a-scene').addEventListener('arjs-video-loaded', () => {
+        debug.innerHTML += '<br>✅ Camera loaded';
+      });
+
+      // Step 2 — check GPS
+      if (navigator.geolocation) {
+        debug.innerHTML += '<br>📡 Requesting GPS...';
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            debug.innerHTML += `<br>✅ GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+          },
+          (err) => {
+            debug.innerHTML += `<br>❌ GPS error: ${err.message}`;
+          }
+        );
+      } else {
+        debug.innerHTML += '<br>❌ GPS not supported';
+      }
+
+      // Step 3 — check model loading
+      const crater = document.getElementById('crater');
+      crater.addEventListener('model-loaded', () => {
+        debug.innerHTML += '<br>✅ Model loaded';
+      });
+      crater.addEventListener('model-error', (e) => {
+        debug.innerHTML += `<br>❌ Model error: ${JSON.stringify(e.detail)}`;
+      });
+    </script>
+
   </body>
 </html>
