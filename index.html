@@ -37,9 +37,6 @@
     }
   </style>
 </head>
-      }
-    </style>
-  </head>
   <body>
 <button id="start-button" onclick="startAR()">Tap to start AR</button>
     <div id="debug">Starting...</div>
@@ -83,6 +80,18 @@ function startAR() {
     });
 }
     <script>
+        function startAR() {
+  document.getElementById('start-button').style.display = 'none';
+  // Request camera explicitly
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then((stream) => {
+      debug.innerHTML += '<br>✅ Camera permission granted';
+      stream.getTracks().forEach(t => t.stop()); // AR.js will re-open it
+    })
+    .catch((err) => {
+      debug.innerHTML += `<br>❌ Camera denied: ${err.message}`;
+    });
+}
       const debug = document.getElementById('debug');
 
       // Step 1 — check if camera starts
