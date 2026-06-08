@@ -66,196 +66,156 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
+// ── Global error catcher ──────────────────────────────────────
+window.onerror = (msg, src, line) => {
+  log('🔴 JS ERROR: ' + msg + ' (line ' + line + ')');
+};
+
 const log = msg => {
-document.getElementById('btn').addEventListener('click', async () => {
-  log('Button tapped ✅');
-
-  // Request orientation AND camera at the same time
-  // so neither blocks the other
-  const [_, stream] = await Promise.all([
-
-    // Orientation permission
-    (async () => {
-      if (typeof DeviceOrientationEvent !== 'undefined' &&
-          typeof DeviceOrientationEvent.requestPermission === 'function') {
-        try {
-          const state = await DeviceOrientationEvent.requestPermission();
-          log('Orientation: ' + state);
-        } catch(err) {
-          log('❌ Orientation: ' + err.message);
-        }
-      } else {
-        log('Orientation: no permission needed');
-      }
-    })(),
-
-    // Camera permission
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
-      audio: false
-    }).then(s => {
-      log('Camera ✅');
-      return s;
-    }).catch(err => {
-      log('❌ Camera: ' + err.name + ' — ' + err.message);
-      return null;
-    })
-
-  ]);
-
-  // Apply camera stream to video
-  if (stream) {
-    document.getElementById('video').srcObject = stream;
-  } else {
-    log('❌ No camera stream — stopping here');
-    return;
-  }
-
-  // Start listening to orientation
-  window.addEventListener('deviceorientation', e => {
-    const heading = e.webkitCompassHeading ?? (360 - e.alpha);
-    const tilt = e.beta ?? 90;
-    camera.rotation.order = 'YXZ';
-    camera.rotation.y = -(heading * Math.PI / 180);
-    camera.rotation.x = ((tilt - 90) * Math.PI / 180);
-  });
-
-  // GPS
-  navigator.geolocation.getCurrentPosition(
-    pos => log(`GPS ✅ ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`),
-    err => log('❌ GPS: ' + err.message),
-    { enableHighAccuracy: true }
-  );
-
-  document.getElementById('btn').style.display = 'none';
-  log('--- Point phone forward — model should be visible ---');
-});
-
-  window.addEventListener('deviceorientation', e => {
-    const heading = e.webkitCompassHeading ?? (360 - e.alpha);
-    const tilt = e.beta ?? 90;
-    camera.rotation.order = 'YXZ';
-    camera.rotation.y = -(heading * Math.PI / 180);
-    camera.rotation.x = ((tilt - 90) * Math.PI / 180);
-  });
-
-  // Step 2: camera
-  try {
-    log('Requesting camera...');
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
-      audio: false
-    });
-    document.getElementById('video').srcObject = stream;
-    log('Camera ✅');
-  } catch(err) {
-    log('❌ Camera: ' + err.name + ' — ' + err.message);
-    return;
-  }
-
-  // Step 3: GPS
-  navigator.geolocation.getCurrentPosition(
-    pos => log(`GPS ✅ ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`),
-    err => log('❌ GPS: ' + err.message),
-    { enableHighAccuracy: true }
-  );
-
-  document.getElementById('btn').style.display = 'none';
-  log('--- Point phone forward — model should be visible ---');
-});
+  const el = document.getElementById('log');
+  el.innerHTML += msg + '<br>';
+  el.scrollTop = el.scrollHeight;
   console.log(msg);
 };
 
-// Three.js setup
-const canvas = document.getElementById('canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setClearColor(0x000000, 0);
+log('Script loaded ✅');
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
-camera.position.set(0, 0, 0);
-scene.add(camera);
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-sun.position.set(100, 200, 100);
-scene.add(sun);
-
-// Load your GLB — placed 20 meters in front of you to start
-const loader = new THREE.GLTFLoader();
-log('Loading model...');
-loader.load(
-  './creat.glb/crater10.glb',   // ← replace with your actual filename
-  gltf => {
-    const model = gltf.scene;
-    model.position.set(0, -5, -20); // 20m ahead, 5m below eye level
-    scene.add(model);
-    log('Model loaded ✅ — you should see it ahead of you');
-  },
-  xhr => {
-    const pct = Math.round((xhr.loaded / xhr.total) * 100);
-    log('Loading: ' + pct + '%');
-  },
-  err => {
-    log('❌ Model error: ' + err.message);
-  }
-);
-
-// Render loop
-function animate() {
-  requestAnimationFrame(animate);
-  renderer.render(scene, camera);
+// ── Three.js ──────────────────────────────────────────────────
+let renderer, scene, camera;
+try {
+  const canvas = document.getElementById('canvas');
+  renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
+  scene.add(camera);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+  sun.position.set(100, 200, 100);
+  scene.add(sun);
+  log('Three.js ready ✅');
+} catch(e) {
+  log('❌ Three.js setup failed: ' + e.message);
 }
-animate();
-log('Render loop started ✅');
 
-document.getElementById('btn').addEventListener('click', async () => {
+// ── Red box placeholder (we will swap for your model later) ───
+try {
+  const box = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 2, 2),
+    new THREE.MeshBasicMaterial({ color: 0xff0000 })
+  );
+  box.position.set(0, 0, -10);
+  scene.add(box);
+  log('Red box added ✅');
+} catch(e) {
+  log('❌ Box failed: ' + e.message);
+}
+
+// ── Render loop ───────────────────────────────────────────────
+try {
+  function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+  animate();
+  log('Render loop running ✅');
+} catch(e) {
+  log('❌ Render loop failed: ' + e.message);
+}
+
+// ── Button ────────────────────────────────────────────────────
+document.getElementById('btn').addEventListener('click', () => {
   log('Button tapped ✅');
+  document.getElementById('btn').style.display = 'none';
+  step1_orientation();
+});
 
+// ── Step 1: Orientation ───────────────────────────────────────
+function step1_orientation() {
+  log('Step 1: orientation...');
   try {
-    log('Requesting camera...');
-    const stream = await navigator.mediaDevices.getUserMedia({
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then(state => {
+          log('Orientation permission: ' + state);
+          attachOrientation();
+          step2_camera();
+        })
+        .catch(err => {
+          log('❌ Orientation denied: ' + err.message);
+          step2_camera(); // continue anyway
+        });
+    } else {
+      log('Orientation: no permission needed');
+      attachOrientation();
+      step2_camera();
+    }
+  } catch(e) {
+    log('❌ Orientation error: ' + e.message);
+    step2_camera();
+  }
+}
+
+function attachOrientation() {
+  window.addEventListener('deviceorientation', e => {
+    try {
+      const heading = e.webkitCompassHeading != null ? e.webkitCompassHeading : (360 - (e.alpha || 0));
+      const tilt = e.beta != null ? e.beta : 90;
+      camera.rotation.order = 'YXZ';
+      camera.rotation.y = -(heading * Math.PI / 180);
+      camera.rotation.x = ((tilt - 90) * Math.PI / 180);
+    } catch(err) {
+      // silent — fires every frame
+    }
+  });
+  log('Orientation listener attached ✅');
+}
+
+// ── Step 2: Camera ────────────────────────────────────────────
+function step2_camera() {
+  log('Step 2: camera...');
+  try {
+    navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment' },
       audio: false
+    })
+    .then(stream => {
+      log('Camera stream ✅');
+      document.getElementById('video').srcObject = stream;
+      step3_gps();
+    })
+    .catch(err => {
+      log('❌ Camera failed: ' + err.name + ' — ' + err.message);
+      step3_gps(); // continue anyway so GPS still logs
     });
-    document.getElementById('video').srcObject = stream;
-    log('Camera ✅');
-  } catch(err) {
-    log('❌ Camera: ' + err.name + ' — ' + err.message);
-    return;
+  } catch(e) {
+    log('❌ Camera exception: ' + e.message);
   }
+}
 
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    try {
-      const state = await DeviceOrientationEvent.requestPermission();
-      log('Orientation: ' + state);
-    } catch(err) {
-      log('❌ Orientation: ' + err.message);
-    }
-  } else {
-    log('Orientation: no permission needed');
+// ── Step 3: GPS ───────────────────────────────────────────────
+function step3_gps() {
+  log('Step 3: GPS...');
+  try {
+    navigator.geolocation.getCurrentPosition(
+      pos => log('GPS ✅ ' + pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5)),
+      err => log('❌ GPS failed: ' + err.message),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  } catch(e) {
+    log('❌ GPS exception: ' + e.message);
   }
+  log('--- All steps done — red box should be visible ahead ---');
+}
 
-  window.addEventListener('deviceorientation', e => {
-    const heading = e.webkitCompassHeading ?? (360 - e.alpha);
-    const tilt = e.beta ?? 90;
-    camera.rotation.order = 'YXZ';
-    camera.rotation.y = -(heading * Math.PI / 180);
-    camera.rotation.x = ((tilt - 90) * Math.PI / 180);
-  });
-
-  navigator.geolocation.getCurrentPosition(
-    pos => log(`GPS ✅ ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`),
-    err => log('❌ GPS: ' + err.message),
-    { enableHighAccuracy: true }
-  );
-
-  document.getElementById('btn').style.display = 'none';
-  log('--- Point phone forward — model should be visible ---');
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
-</body>
+ </body>
 </html>
