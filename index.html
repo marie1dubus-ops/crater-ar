@@ -67,7 +67,54 @@
 
 <script>
 const log = msg => {
-  document.getElementById('log').innerHTML += msg + '<br>';
+document.getElementById('btn').addEventListener('click', async () => {
+  log('Button tapped ✅');
+
+  // Step 1: orientation FIRST (must be first thing after tap on iOS)
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const state = await DeviceOrientationEvent.requestPermission();
+      log('Orientation: ' + state);
+    } catch(err) {
+      log('❌ Orientation: ' + err.message);
+    }
+  } else {
+    log('Orientation: no permission needed');
+  }
+
+  window.addEventListener('deviceorientation', e => {
+    const heading = e.webkitCompassHeading ?? (360 - e.alpha);
+    const tilt = e.beta ?? 90;
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = -(heading * Math.PI / 180);
+    camera.rotation.x = ((tilt - 90) * Math.PI / 180);
+  });
+
+  // Step 2: camera
+  try {
+    log('Requesting camera...');
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false
+    });
+    document.getElementById('video').srcObject = stream;
+    log('Camera ✅');
+  } catch(err) {
+    log('❌ Camera: ' + err.name + ' — ' + err.message);
+    return;
+  }
+
+  // Step 3: GPS
+  navigator.geolocation.getCurrentPosition(
+    pos => log(`GPS ✅ ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`),
+    err => log('❌ GPS: ' + err.message),
+    { enableHighAccuracy: true }
+  );
+
+  document.getElementById('btn').style.display = 'none';
+  log('--- Point phone forward — model should be visible ---');
+});
   console.log(msg);
 };
 
