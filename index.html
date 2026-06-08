@@ -63,6 +63,7 @@
 <button id="btn">Start AR Test</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
 const log = msg => {
@@ -78,34 +79,46 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setClearColor(0x000000, 0);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
 camera.position.set(0, 0, 0);
 scene.add(camera);
 
-// Just a red box, 5 meters in front of the camera
-const box = new THREE.Mesh(
-  new THREE.BoxGeometry(2, 2, 2),
-  new THREE.MeshBasicMaterial({ color: 0xff0000 })
-);
-box.position.set(0, 0, -5);
-scene.add(box);
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(100, 200, 100);
+scene.add(sun);
 
-scene.add(new THREE.AmbientLight(0xffffff, 1));
+// Load your GLB — placed 20 meters in front of you to start
+const loader = new THREE.GLTFLoader();
+log('Loading model...');
+loader.load(
+  './creat.glb/crater10.glb',   // ← replace with your actual filename
+  gltf => {
+    const model = gltf.scene;
+    model.position.set(0, -5, -20); // 20m ahead, 5m below eye level
+    scene.add(model);
+    log('Model loaded ✅ — you should see it ahead of you');
+  },
+  xhr => {
+    const pct = Math.round((xhr.loaded / xhr.total) * 100);
+    log('Loading: ' + pct + '%');
+  },
+  err => {
+    log('❌ Model error: ' + err.message);
+  }
+);
 
 // Render loop
 function animate() {
   requestAnimationFrame(animate);
-  box.rotation.y += 0.01; // spinning so you know it's live
   renderer.render(scene, camera);
 }
 animate();
-log('Three.js render loop started ✅');
+log('Render loop started ✅');
 
-// Button click
 document.getElementById('btn').addEventListener('click', async () => {
   log('Button tapped ✅');
 
-  // Step 1: camera
   try {
     log('Requesting camera...');
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -113,24 +126,22 @@ document.getElementById('btn').addEventListener('click', async () => {
       audio: false
     });
     document.getElementById('video').srcObject = stream;
-    log('Camera stream active ✅');
+    log('Camera ✅');
   } catch(err) {
-    log('❌ Camera failed: ' + err.name + ' — ' + err.message);
+    log('❌ Camera: ' + err.name + ' — ' + err.message);
     return;
   }
 
-  // Step 2: orientation
-  log('Requesting orientation...');
   if (typeof DeviceOrientationEvent !== 'undefined' &&
       typeof DeviceOrientationEvent.requestPermission === 'function') {
     try {
       const state = await DeviceOrientationEvent.requestPermission();
-      log('Orientation permission: ' + state);
+      log('Orientation: ' + state);
     } catch(err) {
-      log('❌ Orientation permission error: ' + err.message);
+      log('❌ Orientation: ' + err.message);
     }
   } else {
-    log('Orientation: no permission needed (non-iOS)');
+    log('Orientation: no permission needed');
   }
 
   window.addEventListener('deviceorientation', e => {
@@ -141,8 +152,6 @@ document.getElementById('btn').addEventListener('click', async () => {
     camera.rotation.x = ((tilt - 90) * Math.PI / 180);
   });
 
-  // Step 3: GPS
-  log('Requesting GPS...');
   navigator.geolocation.getCurrentPosition(
     pos => log(`GPS ✅ ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`),
     err => log('❌ GPS: ' + err.message),
@@ -150,7 +159,7 @@ document.getElementById('btn').addEventListener('click', async () => {
   );
 
   document.getElementById('btn').style.display = 'none';
-  log('--- Look around — you should see a spinning red box ---');
+  log('--- Point phone forward — model should be visible ---');
 });
 </script>
 </body>
