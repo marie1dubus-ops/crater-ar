@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Canal Crater AR</title>
+  <title>AR Test</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: black; overflow: hidden; width: 100vw; height: 100vh; }
+    * { margin: 0; padding: 0; }
+    body { overflow: hidden; background: black; }
 
     #video {
       position: fixed;
       top: 0; left: 0;
-      width: 100%; height: 100%;
+      width: 100vw; height: 100vh;
       object-fit: cover;
       z-index: 0;
     }
@@ -20,50 +20,36 @@
     #canvas {
       position: fixed;
       top: 0; left: 0;
-      width: 100%; height: 100%;
+      width: 100vw; height: 100vh;
       z-index: 1;
     }
 
-    #debug {
+    #log {
       position: fixed;
-      bottom: 20px;
-      left: 10px;
+      top: 10px; left: 10px;
       z-index: 99;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 8px 12px;
-      font-size: 12px;
-      border-radius: 8px;
-      max-width: 95vw;
+      background: rgba(0,0,0,0.8);
+      color: lime;
+      padding: 10px;
+      font-size: 13px;
       font-family: monospace;
+      border-radius: 8px;
+      max-width: 90vw;
+      max-height: 50vh;
+      overflow-y: auto;
     }
 
-    #start-overlay {
+    #btn {
       position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: rgba(0,0,0,0.85);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-family: sans-serif;
-      gap: 20px;
-      padding: 30px;
-      text-align: center;
-    }
-
-    #start-overlay h1 { font-size: 26px; }
-    #start-overlay p { font-size: 15px; opacity: 0.8; }
-
-    #start-btn {
-      padding: 18px 48px;
-      font-size: 20px;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 99;
+      padding: 16px 40px;
+      font-size: 18px;
       border: none;
-      border-radius: 14px;
+      border-radius: 12px;
       background: white;
-      color: black;
       font-weight: bold;
       cursor: pointer;
     }
@@ -71,199 +57,101 @@
 </head>
 <body>
 
-<div id="start-overlay">
-  <h1>Canal Crater AR</h1>
-  <p>Point your phone toward the canal.<br>Allow camera and location when asked.</p>
-  <button id="start-btn">Start Experience</button>
-</div>
-
+<div id="log">Waiting for tap...<br></div>
 <video id="video" autoplay playsinline muted></video>
 <canvas id="canvas"></canvas>
-<div id="debug">Initializing...</div>
+<button id="btn">Start AR Test</button>
 
-<!-- Three.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<!-- GLTFLoader -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-  // ── CONFIG ── change these three values ──────────────────────
-  const CRATER_LAT   = YOUR_LAT;       // e.g. 52.51234
-  const CRATER_LON   = YOUR_LON;       // e.g. 13.37890
-  const CRATER_Y     = -10;            // meters below camera height
-  const MODEL_PATH   = './creat.glb/YOURFILENAME.glb';
-  // ─────────────────────────────────────────────────────────────
+const log = msg => {
+  document.getElementById('log').innerHTML += msg + '<br>';
+  console.log(msg);
+};
 
-  const debug = document.getElementById('debug');
-  const log = msg => { debug.innerHTML = msg; console.log(msg); };
+// Three.js setup
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0x000000, 0);
 
-  // Three.js setup
-  const canvas  = document.getElementById('canvas');
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 0, 0);
+scene.add(camera);
 
-  const scene  = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
-  scene.add(camera);
+// Just a red box, 5 meters in front of the camera
+const box = new THREE.Mesh(
+  new THREE.BoxGeometry(2, 2, 2),
+  new THREE.MeshBasicMaterial({ color: 0xff0000 })
+);
+box.position.set(0, 0, -5);
+scene.add(box);
 
-  // Lighting
-  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-  sun.position.set(100, 200, 100);
-  scene.add(sun);
+scene.add(new THREE.AmbientLight(0xffffff, 1));
 
-  // State
-  let userLat = null, userLon = null;
-  let compassHeading = 0;
-  let deviceTilt = 0;
-  let craterMesh = null;
+// Render loop
+function animate() {
+  requestAnimationFrame(animate);
+  box.rotation.y += 0.01; // spinning so you know it's live
+  renderer.render(scene, camera);
+}
+animate();
+log('Three.js render loop started ✅');
 
-  // ── GPS ──────────────────────────────────────────────────────
-  function startGPS() {
-    navigator.geolocation.watchPosition(pos => {
-      userLat = pos.coords.latitude;
-      userLon = pos.coords.longitude;
-      updateCraterPosition();
-    }, err => {
-      log('GPS error: ' + err.message);
-    }, { enableHighAccuracy: true, maximumAge: 1000 });
-  }
+// Button click
+document.getElementById('btn').addEventListener('click', async () => {
+  log('Button tapped ✅');
 
-  // Convert GPS delta to meters
-  function gpsToMeters(lat1, lon1, lat2, lon2) {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const x = dLon * Math.cos(lat1 * Math.PI / 180) * R;
-    const z = dLat * R;
-    return { x, z };
-  }
-
-  function updateCraterPosition() {
-    if (!craterMesh || userLat === null) return;
-    const { x, z } = gpsToMeters(userLat, userLon, CRATER_LAT, CRATER_LON);
-    craterMesh.position.set(x, CRATER_Y, -z);
-  }
-
-  // ── COMPASS + TILT ───────────────────────────────────────────
-  function startOrientation() {
-    const handler = e => {
-      // iOS uses webkitCompassHeading, Android uses alpha
-      if (e.webkitCompassHeading !== undefined) {
-        compassHeading = e.webkitCompassHeading;
-      } else if (e.alpha !== null) {
-        compassHeading = 360 - e.alpha;
-      }
-      deviceTilt = e.beta || 0; // front-back tilt
-    };
-
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // iOS 13+ requires explicit permission
-      DeviceOrientationEvent.requestPermission()
-        .then(state => {
-          if (state === 'granted') window.addEventListener('deviceorientation', handler);
-          else log('Motion permission denied');
-        });
-    } else {
-      window.addEventListener('deviceorientation', handler);
-    }
-  }
-
-  // ── CAMERA (video passthrough) ───────────────────────────────
-  function startCamera() {
-    return navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { exact: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+  // Step 1: camera
+  try {
+    log('Requesting camera...');
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
       audio: false
-    }).then(stream => {
-document.getElementById('start-btn').addEventListener('click', async () => {
-    document.getElementById('start-overlay').style.display = 'none';
-    log('Button tapped ✅');
-
-    try {
-      log('Requesting camera...');
-      await startCamera();
-      log('Camera done, starting orientation...');
-      startOrientation();
-      log('Starting GPS...');
-      startGPS();
-      log('Loading model...');
-      loadModel();
-      log('Starting render loop...');
-      animate();
-    } catch(err) {
-      log('❌ Error: ' + err.name + ' — ' + err.message);
-      // Show overlay again with error
-      document.getElementById('start-overlay').style.display = 'flex';
-      document.getElementById('start-overlay').innerHTML =
-        `<h1 style="color:red">Error</h1><p>${err.name}: ${err.message}</p><p style="margin-top:10px;opacity:0.7">Go to iPhone Settings → Safari → [your site] → allow Camera and Location, then reload.</p>`;
-    }
-  });
-      log('Camera ✅');
     });
+    document.getElementById('video').srcObject = stream;
+    log('Camera stream active ✅');
+  } catch(err) {
+    log('❌ Camera failed: ' + err.name + ' — ' + err.message);
+    return;
   }
 
-  // ── LOAD MODEL ───────────────────────────────────────────────
-  function loadModel() {
-    log('Loading model...');
-    const loader = new THREE.GLTFLoader();
-    loader.load(
-      MODEL_PATH,
-      gltf => {
-        craterMesh = gltf.scene;
-        scene.add(craterMesh);
-        log('Model ✅ — point at canal!');
-        updateCraterPosition();
-      },
-      xhr => {
-        const pct = Math.round(xhr.loaded / xhr.total * 100);
-        log(`Loading model: ${pct}%`);
-      },
-      err => {
-        log('Model error: ' + err.message);
-      }
-    );
-  }
-
-  // ── RENDER LOOP ──────────────────────────────────────────────
-  function animate() {
-    requestAnimationFrame(animate);
-
-    // Apply compass heading to camera Y rotation
-    const headingRad = compassHeading * Math.PI / 180;
-    // Apply tilt (beta) — remap: holding phone upright = looking forward
-    const tiltRad = (deviceTilt - 90) * Math.PI / 180;
-
-    camera.rotation.order = 'YXZ';
-    camera.rotation.y = -headingRad;
-    camera.rotation.x = tiltRad;
-
-    renderer.render(scene, camera);
-  }
-
-  // ── START ─────────────────────────────────────────────────────
-  document.getElementById('start-btn').addEventListener('click', async () => {
-    document.getElementById('start-overlay').style.display = 'none';
-    log('Starting...');
-
+  // Step 2: orientation
+  log('Requesting orientation...');
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
     try {
-      await startCamera();
-      startOrientation();
-      startGPS();
-      loadModel();
-      animate();
+      const state = await DeviceOrientationEvent.requestPermission();
+      log('Orientation permission: ' + state);
     } catch(err) {
-      log('Error: ' + err.message);
+      log('❌ Orientation permission error: ' + err.message);
     }
+  } else {
+    log('Orientation: no permission needed (non-iOS)');
+  }
+
+  window.addEventListener('deviceorientation', e => {
+    const heading = e.webkitCompassHeading ?? (360 - e.alpha);
+    const tilt = e.beta ?? 90;
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = -(heading * Math.PI / 180);
+    camera.rotation.x = ((tilt - 90) * Math.PI / 180);
   });
 
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  // Step 3: GPS
+  log('Requesting GPS...');
+  navigator.geolocation.getCurrentPosition(
+    pos => log(`GPS ✅ ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`),
+    err => log('❌ GPS: ' + err.message),
+    { enableHighAccuracy: true }
+  );
+
+  document.getElementById('btn').style.display = 'none';
+  log('--- Look around — you should see a spinning red box ---');
+});
 </script>
 </body>
 </html>
