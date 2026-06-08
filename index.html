@@ -101,16 +101,31 @@ try {
 }
 
 // ── Red box placeholder (we will swap for your model later) ───
+// ── Load GLB model ────────────────────────────────────────────
 try {
-  const box = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 2, 2),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 })
+  const loader = new THREE.GLTFLoader();
+  log('Loading model...');
+  loader.load(
+    './creat.glb/crater10.glb',
+    gltf => {
+      const model = gltf.scene;
+      model.position.set(0, -5, -20);
+      scene.add(model);
+      log('Model loaded ✅ — point phone forward');
+    },
+    xhr => {
+      if (xhr.total > 0) {
+        log('Loading: ' + Math.round(xhr.loaded / xhr.total * 100) + '%');
+      } else {
+        log('Loading: ' + Math.round(xhr.loaded / 1024 / 1024) + 'MB received...');
+      }
+    },
+    err => {
+      log('❌ Model failed: ' + (err.message || JSON.stringify(err)));
+    }
   );
-  box.position.set(0, 0, -10);
-  scene.add(box);
-  log('Red box added ✅');
 } catch(e) {
-  log('❌ Box failed: ' + e.message);
+  log('❌ Model exception: ' + e.message);
 }
 
 // ── Render loop ───────────────────────────────────────────────
