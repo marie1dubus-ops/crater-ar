@@ -178,7 +178,29 @@
       video: { facingMode: { exact: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     }).then(stream => {
-      document.getElementById('video').srcObject = stream;
+document.getElementById('start-btn').addEventListener('click', async () => {
+    document.getElementById('start-overlay').style.display = 'none';
+    log('Button tapped ✅');
+
+    try {
+      log('Requesting camera...');
+      await startCamera();
+      log('Camera done, starting orientation...');
+      startOrientation();
+      log('Starting GPS...');
+      startGPS();
+      log('Loading model...');
+      loadModel();
+      log('Starting render loop...');
+      animate();
+    } catch(err) {
+      log('❌ Error: ' + err.name + ' — ' + err.message);
+      // Show overlay again with error
+      document.getElementById('start-overlay').style.display = 'flex';
+      document.getElementById('start-overlay').innerHTML =
+        `<h1 style="color:red">Error</h1><p>${err.name}: ${err.message}</p><p style="margin-top:10px;opacity:0.7">Go to iPhone Settings → Safari → [your site] → allow Camera and Location, then reload.</p>`;
+    }
+  });
       log('Camera ✅');
     });
   }
