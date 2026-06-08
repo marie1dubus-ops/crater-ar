@@ -70,18 +70,66 @@ const log = msg => {
 document.getElementById('btn').addEventListener('click', async () => {
   log('Button tapped ✅');
 
-  // Step 1: orientation FIRST (must be first thing after tap on iOS)
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    try {
-      const state = await DeviceOrientationEvent.requestPermission();
-      log('Orientation: ' + state);
-    } catch(err) {
-      log('❌ Orientation: ' + err.message);
-    }
+  // Request orientation AND camera at the same time
+  // so neither blocks the other
+  const [_, stream] = await Promise.all([
+
+    // Orientation permission
+    (async () => {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const state = await DeviceOrientationEvent.requestPermission();
+          log('Orientation: ' + state);
+        } catch(err) {
+          log('❌ Orientation: ' + err.message);
+        }
+      } else {
+        log('Orientation: no permission needed');
+      }
+    })(),
+
+    // Camera permission
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false
+    }).then(s => {
+      log('Camera ✅');
+      return s;
+    }).catch(err => {
+      log('❌ Camera: ' + err.name + ' — ' + err.message);
+      return null;
+    })
+
+  ]);
+
+  // Apply camera stream to video
+  if (stream) {
+    document.getElementById('video').srcObject = stream;
   } else {
-    log('Orientation: no permission needed');
+    log('❌ No camera stream — stopping here');
+    return;
   }
+
+  // Start listening to orientation
+  window.addEventListener('deviceorientation', e => {
+    const heading = e.webkitCompassHeading ?? (360 - e.alpha);
+    const tilt = e.beta ?? 90;
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = -(heading * Math.PI / 180);
+    camera.rotation.x = ((tilt - 90) * Math.PI / 180);
+  });
+
+  // GPS
+  navigator.geolocation.getCurrentPosition(
+    pos => log(`GPS ✅ ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`),
+    err => log('❌ GPS: ' + err.message),
+    { enableHighAccuracy: true }
+  );
+
+  document.getElementById('btn').style.display = 'none';
+  log('--- Point phone forward — model should be visible ---');
+});
 
   window.addEventListener('deviceorientation', e => {
     const heading = e.webkitCompassHeading ?? (360 - e.alpha);
